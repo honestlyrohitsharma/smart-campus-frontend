@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Campus Assistant - SVIST</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <!-- LOGIN PAGE -->
+  <section id="loginPage" class="login-container">
+    <div class="login-card">
+      <header class="login-header">
+        <div class="logo-icon">✨</div>
+        <h1>Smart Campus Assistant</h1>
+        <p>Login to access your campus dashboard</p>
+      </header>
+
+      <form class="login-form" onsubmit="event.preventDefault(); handleLogin();">
+        <!-- User Type Selector -->
+        <div class="user-type-selector">
+          <button type="button" class="user-type-btn active" data-type="student">👨‍🎓 Student</button>
+          <button type="button" class="user-type-btn" data-type="teacher">👨‍🏫 Teacher</button>
+        </div>
+
+        <!-- ID Input -->
+        <div class="form-group">
+          <label for="studentId">Student ID / Roll Number</label>
+          <input type="text" id="studentId" placeholder="S001" required/>
+        </div>
+
+        <!-- Password Input -->
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required/>
+        </div>
+
+        <!-- Options -->
+        <div class="form-options">
+          <label class="remember-me">
+            <input type="checkbox" id="remember"/>
+            Remember me
+          </label>
+          <a href="#" class="forgot-password">Forgot password?</a>
+        </div>
+
+        <!-- Login Button -->
+        <button type="submit" class="login-btn">Login</button>
+
+        <!-- Principal Info -->
+        <div class="principal-info">
+          <div class="principal-avatar">👩‍💼</div>
+          <div class="principal-details">
+            <p class="principal-name">Mrs. Sonali</p>
+            <p class="principal-title">Principal, SVIST</p>
+          </div>
+          <p class="principal-message">
+            The Principal has the authority to create new student IDs for login access. 
+            New students should contact the Principal's office for ID creation and system access.
+          </p>
+        </div>
+
+        <p class="terms">
+          By logging in, you agree to our 
+          <a href="#">Terms of Service</a> and 
+          <a href="#">Privacy Policy</a>
+        </p>
+      </form>
+    </div>
+  </section>
+
+  <!-- DASHBOARD PAGE -->
+  <section id="dashboardPage" class="dashboard-container" style="display: none;">
+    <!-- HEADER -->
+    <header class="dashboard-header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="logo">
+            <div class="logo-icon">✨</div>
+            <span>Smart Campus Assistant</span>
+          </div>
+        </div>
+        <nav class="header-nav">
+          <a href="#" class="nav-item active">Dashboard</a>
+          <a href="#" class="nav-item">📚 Assignments</a>
+          <a href="#" class="nav-item">🔔 Notices</a>
+          <a href="#" class="nav-item">📍 Campus Map</a>
+          <a href="#" class="nav-item">👥 Attendance</a>
+          <a href="#" class="nav-item">📅 Class Timetable</a>
+        </nav>
+        <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <div class="hero-left">
+          <div class="hero-title">
+            <span class="hero-icon">✨</span>
+            <h1>Smart Campus Assistant</h1>
+          </div>
+          <p class="hero-subtitle">Your complete campus management solution</p>
+          <div class="user-info">
+            <div class="user-detail">
+              <span>👤</span>
+              <span id="welcomeUser">Welcome, User</span>
+            </div>
+            <div class="user-detail">
+              <span>🎓</span>
+              <span id="userRole">CSE-C Student</span>
+            </div>
+          </div>
+          <div class="hero-buttons">
+            <button class="hero-btn">📅 Academic Calendar</button>
+            <button class="hero-btn">🎉 Campus Events</button>
+            <button class="hero-btn">📚 Student Resources</button>
+          </div>
+        </div>
+        <div class="hero-right">
+          <p class="current-date" id="currentDate"></p>
+          <p class="current-time" id="currentTime"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- Current Class -->
+      <div class="current-class-card">
+        <div class="class-status">
+          <span class="class-icon">🕐</span>
+          <div class="class-info">
+            <h3>No Current Class</h3>
+            <p>You don't have any class right now</p>
+            <p class="class-note">Check your schedule for upcoming classes.</p>
+            <button class="view-schedule-btn">View Schedule</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Cards -->
+      <section class="dashboard-section">
+        <div class="section-header">
+          <h2>Dashboard</h2>
+          <button class="view-full-schedule">📅 View Full Schedule</button>
+        </div>
+        <div class="dashboard-grid">
+          <div class="dashboard-card blue">
+            <h3>📚 Assignments</h3>
+            <p>View and submit your assignments</p>
+            <p class="card-status red">2 assignments due this week</p>
+          </div>
+          <div class="dashboard-card orange">
+            <h3>🔔 Notices</h3>
+            <p>Campus announcements and updates</p>
+            <p class="card-status orange">5 new notices today</p>
+          </div>
+          <div class="dashboard-card blue-dark">
+            <h3>🕐 Class Timetable</h3>
+            <p>View class schedules and teachers</p>
+            <p class="card-status blue">CSE-C - 1st Year 2nd Semester</p>
+          </div>
+          <div class="dashboard-card green">
+            <h3>📍 Campus Map</h3>
+            <p>Navigate around campus</p>
+            <p class="card-status green">Interactive map with building locations</p>
+          </div>
+          <div class="dashboard-card purple">
+            <h3>👥 Attendance</h3>
+            <p>Track your attendance records</p>
+            <p class="card-status purple">Current attendance: 88%</p>
+          </div>
+          <div class="dashboard-card red">
+            <h3>📅 Class Schedule</h3>
+            <p>View your weekly class schedule</p>
+            <p class="card-status red">3 classes today</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Events -->
+      <section class="events-section">
+        <div class="events-card">
+          <h3>Upcoming Academic Events</h3>
+          <div class="events-list">
+            <div class="event-item purple-bg">
+              <div class="event-icon">📝</div>
+              <div class="event-details">
+                <h4>Even Semester Examination</h4>
+                <p>All departments</p>
+              </div>
+              <span class="event-date">May 2 - May 15, 2025</span>
+            </div>
+            <div class="event-item pink-bg">
+              <div class="event-icon">💼</div>
+              <div class="event-details">
+                <h4>Campus Recruitment Drive</h4>
+                <p>Placement Cell</p>
+              </div>
+              <span class="event-date">May 5, 2025</span>
+            </div>
+            <div class="event-item blue-bg">
+              <div class="event-icon">👨‍💻</div>
+              <div class="event-details">
+                <h4>Summer Internship Program</h4>
+                <p>Computer Science Department</p>
+              </div>
+              <span class="event-date">May 25, 2025</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-content">
+      <!-- YouTube Section -->
+      <div class="footer-section">
+        <h3>Campus Tour</h3>
+        <div class="youtube-container">
+          <iframe src="https://www.youtube.com/embed/WaB_8hfwPL8?si=aHAq2OhxGHibpwl2" 
+                  title="SVIST Campus Tour"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+
+      <!-- College Info -->
+      <div class="footer-section">
+        <h3>College Information</h3>
+        <address class="college-info">
+          <h4>Swami Vivekananda Institute of Science & Technology</h4>
+          <p>📍 Dakshin Gobindapur, Sonarpur, Kolkata 700 145, INDIA</p>
+          <p>📧 info@svist.org</p>
+          <p>📞 +91 9831084446, +91 9434360673</p>
+          <p>📞 +91 33 2437-9913</p>
+          <p>🕐 10:00 am – 6:00 pm</p>
+        </address>
+      </div>
+
+      <!-- Creators -->
+      <div class="footer-section">
+        <h3>Created By</h3>
+        <div class="creators-info">
+          <div class="creator">
+            <h4>Shreya Ranjan</h4>
+            <p>📧 shreyaranjan9431@gmail.com</p>
+          </div>
+          <div class="creator">
+            <h4>Rohit Sharma</h4>
+            <p>📧 rohitrnps@gmail.com</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 Smart Campus Assistant - SVIST. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
