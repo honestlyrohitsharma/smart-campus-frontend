@@ -1,7 +1,7 @@
 // ===============================
 // Global Variables
 // ===============================
-const API_URL = 'https://smart-campus-api-ttdc.onrender.com'; // The address of your backend; // Correct backend URL
+const API_URL = 'https://smart-campus-api-11dr.onrender.com'; // The address of your backend; // Correct backend URL
 let currentUserType = "student";
 let authToken = null; // This will now store the JWT access token
 
@@ -259,4 +259,5 @@ function initializeDashboardHandlers() {
     });
   });
 }
+
 
