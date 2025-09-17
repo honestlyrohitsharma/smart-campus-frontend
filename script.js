@@ -1,7 +1,6 @@
 // ===============================
 // Global Variables
 // ===============================
-// This MUST point to your live Render backend URL
 const API_URL = 'https://smart-campus-api-11dr.onrender.com';
 let authToken = null;
 let calendar = null;
@@ -40,7 +39,10 @@ function handleNavigation(event) {
 
 function navigateTo(viewId) {
     document.querySelectorAll('.page-view').forEach(view => view.classList.remove('active'));
-    document.getElementById(viewId)?.classList.add('active');
+    const targetView = document.getElementById(viewId);
+    if (targetView) {
+        targetView.classList.add('active');
+    }
     document.querySelectorAll('.nav-item, .sub-nav .nav-item').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('href') === `#${viewId}`) {
@@ -66,8 +68,7 @@ async function handleLogin() {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // This body format MUST match the backend's Pydantic model
-      body: JSON.stringify({ student_id_str: studentId, password: password }),
+      body: JSON.stringify({ student_id_str: studentId, password }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Invalid credentials");
@@ -105,7 +106,7 @@ async function fetchDashboardData() {
     const userData = await userRes.json();
     allAttendanceData = await attendanceRes.json();
     
-    populateDashboard(userData, allAttendanceData);
+    populateUI(userData, allAttendanceData);
     showDashboard();
   } catch (error) {
     showNotification(error.message, "error");
@@ -113,10 +114,9 @@ async function fetchDashboardData() {
   }
 }
 
-function populateDashboard(userData, attendanceData) {
+function populateUI(userData, attendanceData) {
   // Populate new header
   document.getElementById('welcomeUser').textContent = userData.name;
-  document.getElementById('userRole').textContent = "Student";
   document.getElementById('userDetails').textContent = userData.student_id_str;
   const nameParts = userData.name.split(' ');
   const initials = nameParts.length > 1 ? `${nameParts[0][0]}${nameParts[1][0]}` : nameParts[0].substring(0, 2);
@@ -126,7 +126,7 @@ function populateDashboard(userData, attendanceData) {
   const welcomeHero = document.getElementById('welcomeUser-hero');
   const roleHero = document.getElementById('userRole-hero');
   if(welcomeHero) welcomeHero.textContent = `Welcome, ${userData.name}`;
-  if(roleHero) roleHero.textContent = `${userData.student_id_str} - Student`;
+  if(roleHero) roleHero.textContent = `${userData.student_id_str} Student`;
 
   // Populate main dashboard summary
   const totalDays = 200;
@@ -198,4 +198,3 @@ function showNotification(message, type = "info") {
   document.body.appendChild(notification);
   setTimeout(() => { notification.classList.remove('show'); setTimeout(() => notification.remove(), 500); }, 3000);
 }
-
