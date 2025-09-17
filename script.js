@@ -1,190 +1,171 @@
 // ===============================
 // Global Variables
 // ===============================
-const API_URL = 'https://smart-campus-api-11dr.onrender.com'; // The address of your backend; // Correct backend URL
-let currentUserType = "student";
-let authToken = null; // This will now store the JWT access token
+// This MUST point to your live Render backend URL
+const API_URL = 'https://smart-campus-api-11dr.onrender.com';
+let authToken = null;
+let calendar = null;
+let allAttendanceData = [];
 
 // ===============================
-// Initialize App
+// App Initialization
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
   initializeApp();
-  checkLoginStatus(); // Check if a token already exists from a previous session
+  checkLoginStatus();
 });
 
-// ===============================
-// Core Initialization
-// ===============================
 function initializeApp() {
-  document.querySelectorAll(".user-type-btn").forEach((btn) => {
-    btn.addEventListener("click", () => selectUserType(btn.getAttribute("data-type")));
-  });
-
-  const studentIdInput = document.getElementById("studentId");
-  if (studentIdInput) {
-    studentIdInput.form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        handleLogin();
-    });
-  }
-
-  updateLoginButtonText();
+  // Event Listeners
+  document.querySelectorAll(".nav-item").forEach(link => link.addEventListener("click", handleNavigation));
+  document.querySelector(".attendance-card-link")?.addEventListener("click", () => navigateTo('attendanceView'));
+  document.querySelector(".login-form")?.addEventListener("submit", e => { e.preventDefault(); handleLogin(); });
+  document.querySelector(".logout-btn")?.addEventListener("click", handleLogout);
+  document.querySelector("#month-select")?.addEventListener("change", () => renderAttendanceCalendar(allAttendanceData));
+  document.querySelector("#year-select")?.addEventListener("change", () => renderAttendanceCalendar(allAttendanceData));
+  
   updateCurrentTime();
   setInterval(updateCurrentTime, 1000);
+  populateYearAndMonthSelectors();
 }
 
 // ===============================
-// Check Login Status on Page Load
+// Navigation
+// ===============================
+function handleNavigation(event) {
+    event.preventDefault();
+    const viewId = event.target.getAttribute('href').substring(1);
+    navigateTo(viewId);
+}
+
+function navigateTo(viewId) {
+    document.querySelectorAll('.page-view').forEach(view => view.classList.remove('active'));
+    document.getElementById(viewId)?.classList.add('active');
+    document.querySelectorAll('.nav-item, .sub-nav .nav-item').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${viewId}`) {
+            link.classList.add('active');
+        }
+    });
+}
+
+// ===============================
+// Authentication & Session
 // ===============================
 function checkLoginStatus() {
-  const token = sessionStorage.getItem('authToken');
-  if (token) {
-    authToken = token;
-    fetchDashboardData(); // If a token exists, try to fetch dashboard data
-  }
+  authToken = sessionStorage.getItem('authToken');
+  if (authToken) fetchDashboardData();
 }
 
-// ===============================
-// User Type Selection
-// ===============================
-function selectUserType(type) {
-  currentUserType = type;
-  document.querySelectorAll(".user-type-btn").forEach((btn) => {
-    btn.classList.remove("active");
-    if (btn.getAttribute("data-type") === type) btn.classList.add("active");
-  });
-  updateLoginButtonText();
-}
-
-function updateLoginButtonText() {
-  const loginBtn = document.querySelector(".login-btn");
-  if (loginBtn) {
-    loginBtn.textContent = `Login as ${currentUserType === "student" ? "Student" : "Teacher"}`;
-  }
-}
-
-// ===============================
-// Login Logic
-// ===============================
 async function handleLogin() {
-  const userId = document.getElementById("studentId").value.trim();
+  const studentId = document.getElementById("studentId").value.trim();
   const password = document.getElementById("password").value.trim();
-
-  if (!userId || !password) {
-    showNotification("Please enter both ID and Password", "warning");
-    return;
-  }
+  if (!studentId || !password) return showNotification("Please enter both ID and Password.", "error");
 
   try {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ student_id_str: userId, password: password }),
+      // This body format MUST match the backend's Pydantic model
+      body: JSON.stringify({ student_id_str: studentId, password: password }),
     });
-
     const data = await res.json();
-
-    if (!res.ok) {
-      showNotification(data.detail || "Invalid login credentials", "error");
-      return;
-    }
+    if (!res.ok) throw new Error(data.detail || "Invalid credentials");
 
     authToken = data.access_token;
-    sessionStorage.setItem('authToken', authToken); 
-
-    showNotification("Login successful! Fetching your data...", "success");
-
+    sessionStorage.setItem('authToken', authToken);
+    showNotification("Login successful!", "success");
     fetchDashboardData();
-
   } catch (error) {
-    console.error("Login failed:", error);
-    showNotification("Server error. Please try again later.", "error");
+    showNotification(error.message, "error");
   }
 }
 
+function handleLogout() {
+  sessionStorage.removeItem('authToken');
+  authToken = null;
+  showLogin();
+  showNotification("Logged out successfully.", "info");
+}
+
 // ===============================
-// Fetch ALL Dashboard Data (UPDATED)
+// Data Fetching & Rendering
 // ===============================
 async function fetchDashboardData() {
-    if (!authToken) {
-        showLogin();
-        return;
-    }
+  if (!authToken) return showLogin();
 
-    try {
-        // We will fetch user profile and attendance data at the same time
-        const [userRes, attendanceRes] = await Promise.all([
-            fetch(`${API_URL}/api/students/me`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }),
-            fetch(`${API_URL}/api/attendance/me`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            })
-        ]);
+  try {
+    const [userRes, attendanceRes] = await Promise.all([
+      fetch(`${API_URL}/api/students/me`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+      fetch(`${API_URL}/api/attendance/me`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+    ]);
 
-        if (userRes.ok && attendanceRes.ok) {
-            const userData = await userRes.json();
-            const attendanceData = await attendanceRes.json();
-            
-            // Pass all data to the populate function
-            populateDashboard(userData, attendanceData);
-            showDashboard();
-        } else {
-            // If either fetch fails, the token is likely invalid
-            const errorData = await userRes.json(); // Get error from the first failed response
-            showNotification(errorData.detail || "Session expired. Please log in again.", "error");
-            handleLogout();
-        }
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        showNotification("Could not load dashboard data. Server may be offline.", "error");
-    }
+    if (!userRes.ok || !attendanceRes.ok) throw new Error("Session expired.");
+
+    const userData = await userRes.json();
+    allAttendanceData = await attendanceRes.json();
+    
+    populateDashboard(userData, allAttendanceData);
+    showDashboard();
+  } catch (error) {
+    showNotification(error.message, "error");
+    handleLogout();
+  }
 }
 
-
-// ===============================
-// Populate Dashboard with Dynamic Data (UPDATED)
-// ===============================
 function populateDashboard(userData, attendanceData) {
-    // Populate user info
-    document.getElementById('welcomeUser').textContent = `Welcome, ${userData.name}`;
-    document.getElementById('userRole').textContent = `${userData.student_id_str} - Student`;
+  // Populate new header
+  document.getElementById('welcomeUser').textContent = userData.name;
+  document.getElementById('userRole').textContent = "Student";
+  document.getElementById('userDetails').textContent = userData.student_id_str;
+  const nameParts = userData.name.split(' ');
+  const initials = nameParts.length > 1 ? `${nameParts[0][0]}${nameParts[1][0]}` : nameParts[0].substring(0, 2);
+  document.getElementById('userAvatar').textContent = initials.toUpperCase();
+  
+  // Populate original dashboard elements
+  const welcomeHero = document.getElementById('welcomeUser-hero');
+  const roleHero = document.getElementById('userRole-hero');
+  if(welcomeHero) welcomeHero.textContent = `Welcome, ${userData.name}`;
+  if(roleHero) roleHero.textContent = `${userData.student_id_str} - Student`;
 
-    // --- NEW: Populate Attendance Card ---
-    const attendanceCard = document.querySelector('.dashboard-card.purple .card-status');
-    if (attendanceCard) {
-        const totalClasses = 50; // Assume a total number of classes for percentage calculation
-        const presentCount = attendanceData.length;
-        const percentage = totalClasses > 0 ? ((presentCount / totalClasses) * 100).toFixed(1) : 0;
-        
-        attendanceCard.textContent = `Current attendance: ${percentage}% (${presentCount} / ${totalClasses} classes)`;
-    }
-    // ------------------------------------
+  // Populate main dashboard summary
+  const totalDays = 200;
+  const percentage = (attendanceData.length / totalDays * 100).toFixed(0);
+  const summaryText = document.getElementById('attendanceSummaryText');
+  if (summaryText) summaryText.textContent = `Current: ${percentage}%`;
+
+  // Populate detailed attendance page
+  renderSummaryCards(attendanceData);
+  // renderAttendanceCalendar(attendanceData); // You can add this back if you have the calendar HTML
 }
 
-// ===============================
-// Logout
-// ===============================
-function handleLogout() {
-  document.getElementById("studentId").value = "";
-  document.getElementById("password").value = "";
-  selectUserType("student");
+function renderSummaryCards(attendanceData) {
+    const totalDaysInYear = 200;
+    const overallPercentage = (attendanceData.length / totalDaysInYear * 100).toFixed(0);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const daysInMonth = new Date(now.getFullYear(), currentMonth + 1, 0).getDate();
+    const monthAttendance = attendanceData.filter(rec => new Date(rec.timestamp).getMonth() === currentMonth).length;
 
-  authToken = null;
-  sessionStorage.removeItem('authToken');
+    const overallProgress = document.getElementById('overall-progress');
+    const overallLabel = document.getElementById('overall-label');
+    const monthProgress = document.getElementById('month-progress');
+    const monthLabel = document.getElementById('month-label');
 
-  showLogin();
-  showNotification("Logged out successfully!", "info");
+    if(overallProgress) overallProgress.style.width = `${overallPercentage}%`;
+    if(overallLabel) overallLabel.textContent = `${overallPercentage}%`;
+    if(monthProgress) monthProgress.style.width = `${(monthAttendance / daysInMonth) * 100}%`;
+    if(monthLabel) monthLabel.textContent = `${monthAttendance} / ${daysInMonth} days`;
 }
 
+
 // ===============================
-// Page Switching
+// UI Helpers
 // ===============================
 function showDashboard() {
   document.getElementById("loginPage").style.display = "none";
   document.getElementById("dashboardPage").style.display = "block";
-  initializeDashboardHandlers();
+  navigateTo('dashboardView');
 }
 
 function showLogin() {
@@ -192,72 +173,29 @@ function showLogin() {
   document.getElementById("dashboardPage").style.display = "none";
 }
 
-// ===============================
-// Date & Time
-// ===============================
 function updateCurrentTime() {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour: "2-digit", minute: "2-digit", hour12: true,
-  });
-  const currentDateEl = document.getElementById("currentDate");
-  const currentTimeEl = document.getElementById("currentTime");
-  if (currentDateEl) currentDateEl.textContent = dateStr;
-  if (currentTimeEl) currentTimeEl.textContent = timeStr;
+    const now = new Date();
+    const dateEl = document.getElementById('currentDate');
+    const timeEl = document.getElementById('currentTime');
+    if (dateEl) dateEl.textContent = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
-// ===============================
-// Notifications
-// ===============================
+function populateYearAndMonthSelectors() {
+    const monthSelect = document.getElementById('month-select');
+    const yearSelect = document.getElementById('year-select');
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    if (monthSelect) { months.forEach((month, index) => { monthSelect.options[index] = new Option(month, index); }); monthSelect.value = currentMonth; }
+    if (yearSelect) { for (let i = 0; i < 5; i++) { yearSelect.options[i] = new Option(currentYear - i, currentYear - i); } }
+}
+
 function showNotification(message, type = "info") {
   const notification = document.createElement("div");
-  const existingNotifications = document.querySelectorAll('.notification').length;
-  notification.className = `notification notification-${type}`;
+  notification.className = `notification notification-${type} show`;
   notification.textContent = message;
-  
-  const baseStyles = {
-    position: 'fixed', top: `${20 + (existingNotifications * 70)}px`, right: '20px',
-    padding: '15px 25px', borderRadius: '8px', color: 'white', fontWeight: '500',
-    zIndex: '9999', transform: 'translateX(120%)', 
-    transition: 'transform 0.4s ease-in-out, opacity 0.4s ease-in-out',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)', opacity: '0'
-  };
-  const typeStyles = {
-      success: { backgroundColor: '#10b981' }, error: { backgroundColor: '#ef4444' },
-      warning: {backgroundColor: '#f97316'}, info: { backgroundColor: '#3b82f6' }
-  };
-  Object.assign(notification.style, baseStyles, typeStyles[type]);
-  
   document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.transform = "translateX(0)";
-    notification.style.opacity = '1';
-  }, 100);
-
-  setTimeout(() => {
-    notification.style.transform = "translateX(120%)";
-    notification.style.opacity = '0';
-    setTimeout(() => notification.remove(), 400);
-  }, 4000);
+  setTimeout(() => { notification.classList.remove('show'); setTimeout(() => notification.remove(), 500); }, 3000);
 }
-
-// ===============================
-// Dashboard Card Interactions
-// ===============================
-function initializeDashboardHandlers() {
-  document.querySelectorAll(".dashboard-card, .event-item, .hero-btn").forEach((card) => {
-    if (card.dataset.listenerAttached) return;
-    card.dataset.listenerAttached = true;
-    
-    card.addEventListener("click", () => {
-      const cardTitle = card.querySelector("h3, h4")?.textContent || card.textContent;
-      showNotification(`Opening ${cardTitle.trim()}...`, "info");
-    });
-  });
-}
-
 
